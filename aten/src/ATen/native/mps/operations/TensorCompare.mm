@@ -12,6 +12,8 @@
 #include <ATen/ops/clamp_max_native.h>
 #include <ATen/ops/clamp_min_native.h>
 #include <ATen/ops/clamp_native.h>
+#include <ATen/ops/nan_to_num_native.h>
+#include <ATen/ops/where_native.h>
 #endif
 
 namespace at::native {
@@ -23,7 +25,7 @@ struct CachedGraph : public MPSCachedGraph {
   MPSGraphTensor *minTensor = nil, *maxTensor = nil;
 };
 
-void clamp_mps_graph(CachedGraph* cachedGraph, const Tensor& input_tensor) {
+static void clamp_mps_graph(CachedGraph* cachedGraph, const Tensor& input_tensor) {
   MPSGraph* mpsGraph = cachedGraph->graph();
 
   cachedGraph->inputTensor = mpsGraphRankedPlaceHolder(mpsGraph, input_tensor);
@@ -44,7 +46,7 @@ void clamp_mps_graph(CachedGraph* cachedGraph, const Tensor& input_tensor) {
   }
 }
 
-void check_min_max_dims(const OptionalTensorRef clamp_opt, const Tensor& input_t, string op_name) {
+static void check_min_max_dims(const OptionalTensorRef clamp_opt, const Tensor& input_t, string op_name) {
   if (!clamp_opt->is_same_size(input_t)) {
     auto num_clamp_dims = clamp_opt->dim();
     auto num_input_dims = input_t.dim();
@@ -63,7 +65,10 @@ void check_min_max_dims(const OptionalTensorRef clamp_opt, const Tensor& input_t
   }
 }
 
-void fill_new_shape(int64_t num_input_dims, int64_t num_clamp_dims, int64_t* new_shape, IntArrayRef clamp_shape) {
+static void fill_new_shape(int64_t num_input_dims,
+                           int64_t num_clamp_dims,
+                           int64_t* new_shape,
+                           IntArrayRef clamp_shape) {
   // Extend the shape with ones to the left
   int clamp_idx = 0;
   for (int i = 0; i < num_input_dims; i++) {
@@ -76,11 +81,11 @@ void fill_new_shape(int64_t num_input_dims, int64_t num_clamp_dims, int64_t* new
   }
 }
 
-void clamp_tensor_out_mps(const Tensor& input_t,
-                          const OptionalTensorRef min_opt,
-                          const OptionalTensorRef max_opt,
-                          const Tensor& output_t,
-                          string op_name) {
+static void clamp_tensor_out_mps(const Tensor& input_t,
+                                 const OptionalTensorRef min_opt,
+                                 const OptionalTensorRef max_opt,
+                                 const Tensor& output_t,
+                                 string op_name) {
   const bool has_min = (min_opt.has_value() && min_opt->defined());
   const bool has_max = (max_opt.has_value() && max_opt->defined());
 
@@ -163,11 +168,11 @@ void clamp_tensor_out_mps(const Tensor& input_t,
   }
 }
 
-void clamp_scalar_out_mps(const Tensor& input_t,
-                          const OptionalScalarRef min_opt,
-                          const OptionalScalarRef max_opt,
-                          const Tensor& output_t,
-                          string op_name) {
+static void clamp_scalar_out_mps(const Tensor& input_t,
+                                 const OptionalScalarRef min_opt,
+                                 const OptionalScalarRef max_opt,
+                                 const Tensor& output_t,
+                                 string op_name) {
   using scalar_t = double;
 
   const bool has_min = (min_opt.has_value());
