@@ -9,7 +9,7 @@ import operator
 import re
 import types
 from typing import List, NamedTuple, Optional, Union
-
+import itertools
 import torch
 
 from torch import SymInt
@@ -223,6 +223,9 @@ class VariableBuilder:
             TensorVariable,
             TensorWithTFOverrideVariable,
             UserDefinedObjectVariable,
+            UserDefinedObjectVariable,
+            FSDPManagedNNModuleVariable,
+            UserDefinedClassVariable,
         ]:
             return True
         return False
@@ -615,6 +618,7 @@ class VariableBuilder:
                 guards=self.make_guards(GuardBuilder.TYPE_MATCH),
             )
         elif ProcessGroupVariable.is_process_group(value):
+            print("Made PG")
             return ProcessGroupVariable(
                 value,
                 source=self.source,
@@ -792,8 +796,18 @@ class VariableBuilder:
             #
             # ID_MATCH is required to disambiguate cases as simple as a unit test that constructs 2 models and wraps
             # them differently with different FSDP configs.  (test_dynamo_distributed.py -k test_fsdp_aot_eager)
+            
+            # TODO(voz): Dedup with register_attr
+            base = self.name
+            name = self.name
+            for i in itertools.count():
+                if name not in self.tx.output.nn_modules:
+                    self.tx.output.nn_modules[name] = value
+                    break
+                name = f"{base}_{i}"
             return FSDPManagedNNModuleVariable(
                 value,
+                name,
                 guards=self.make_guards(GuardBuilder.TYPE_MATCH, GuardBuilder.ID_MATCH),
                 source=self.get_source(),
             )
@@ -1332,6 +1346,7 @@ def wrap_fx_proxy_cls(
         # This always wants to be in the graph, even if the constraint
         # results in a constant int
         torch._export.constraints.constrain_as_value,
+        torch.initial_seed,
     ]:
         proxy.node.meta["example_value"] = example_value
         return ConstantVariable(example_value, **options)
