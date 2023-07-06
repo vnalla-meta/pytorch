@@ -27,7 +27,6 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.distributed._tensor import DTensor
 from torch.distributed.fsdp._common_utils import (
     _FSDPDeviceHandle,
     _named_parameters_with_duplicates,
@@ -1791,6 +1790,7 @@ class FlatParamHandle:
             zip(views, flat_param._param_infos)
         ):
             if self._use_orig_params and as_params:
+                from torch.distributed._tensor import DTensor
                 if type(view) is DTensor:
                     # A `DTensor` `view` is not compatible with assigning
                     # `param.data = view`, so we cannot preserve the parameter
