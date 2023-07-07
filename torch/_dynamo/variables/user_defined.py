@@ -200,6 +200,9 @@ class UserDefinedObjectVariable(UserDefinedVariable):
         super().__init__(**kwargs)
         self.value = value
         self.value_type = value_type or type(value)
+        # if isinstance(self.value, (types.FunctionType, types.MethodType)):
+            # raise RuntimeError(f"Trying to make a UDO func {self.value}")
+        
         assert type(value) is self.value_type
 
     def __str__(self):
@@ -456,7 +459,7 @@ class UserDefinedObjectVariable(UserDefinedVariable):
             )
         elif isinstance(subobj, types.FunctionType) or (
             isinstance(subobj, types.MethodType)
-            and isinstance(self.value, torch.nn.Module)
+            and (isinstance(self.value, torch.nn.Module) or isinstance(self.value, torch.distributed.fsdp.flat_param.FlatParamHandle))
         ):
             if isinstance(subobj, types.MethodType):
                 func = subobj.__func__
@@ -479,7 +482,11 @@ class UserDefinedObjectVariable(UserDefinedVariable):
                 elif is_allowed(func):
                     return variables.TorchVariable(func, source=source, **options)
                 return variables.UserFunctionVariable(func, source=source, **options)
-
+        # elif isinstance(subobj, types.FunctionType) or (
+        #     isinstance(subobj, types.MethodType)
+        #     and isinstance(self.value, torch.distributed.fsdp.flat_param.FlatParamHandle)
+        # ):
+            # print("Gettattr driven via subobj?", type(self.value), subobj, type(subobj))
         if (
             name in getattr(value, "__dict__", {})
             or ConstantVariable.is_literal(subobj)

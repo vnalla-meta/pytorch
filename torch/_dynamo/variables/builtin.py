@@ -1092,7 +1092,7 @@ class BuiltinVariable(VariableTracker):
                         return VariableBuilder(tx, source)(example_value).add_options(
                             options
                         )
-                unimplemented("tensor grad with source", source)
+                unimplemented(f"tensor grad with source {source}")
             else:
                 from .builder import wrap_fx_proxy
                 grad_proxy = obj.as_proxy().grad
@@ -1147,7 +1147,6 @@ class BuiltinVariable(VariableTracker):
                     obj.var_getattr(tx, name).clone(source=source).add_options(options)
                 )
             except NotImplementedError:
-                print("Fall through 2", obj, name)
                 return GetAttrVariable(obj, name, **options)
 
     def call_setattr(
@@ -1161,6 +1160,19 @@ class BuiltinVariable(VariableTracker):
             tx.output.side_effects.is_attribute_mutation(obj)
             and name_var.is_python_constant()
         ):
+            # if isinstance(obj, variables.nn_module.FSDPManagedNNModuleVariable):
+            #     if isinstance(val, variables.DeletedVariable):
+            #         # Gross - but required for safety to not raise atm
+            #         print("DELETING FROM FSDP", obj.value, name_var.value)
+            #         # if hasattr(obj.value, name_var.value):
+            #             # delattr(obj.value, name_var.value)
+            #         print("DELETED FROM FSDP", name_var.value)
+            #     else:
+            #         print("SETTING ON FSDP", name_var.value)
+                # return val
+                # unimplemented("NYI - delattr on FSDP")
+            
+
             tx.output.side_effects.store_attr(obj, name_var.as_python_constant(), val)
             if isinstance(obj, variables.TensorVariable):
                 from .builder import wrap_fx_proxy, VariableBuilder, wrap_to_fake_tensor_and_record
@@ -1178,7 +1190,6 @@ class BuiltinVariable(VariableTracker):
                             "call_function", torch._set_data, *proxy_args_kwargs([obj, val], {}))
                         )
                     tx.replace_all(obj, out)
-                    print("mutable?", obj.mutable_local)
             
             return val.add_options(self, obj, name_var)
         elif isinstance(obj, variables.UserDefinedObjectVariable):
@@ -1193,6 +1204,7 @@ class BuiltinVariable(VariableTracker):
             obj.convert_to_unspecialized(tx)
 
     def call_delattr(self, tx, obj: VariableTracker, name_var: VariableTracker):
+        print("REAL DELATTR HOURS", obj, name_var.value)
         return self.call_setattr(tx, obj, name_var, variables.DeletedVariable())
 
     def call_type(self, tx, obj: VariableTracker):
