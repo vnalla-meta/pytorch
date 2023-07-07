@@ -1154,6 +1154,20 @@ class BuiltinVariable(VariableTracker):
             and name_var.is_python_constant()
         ):
             tx.output.side_effects.store_attr(obj, name_var.as_python_constant(), val)
+            if isinstance(obj, variables.TensorVariable):
+                if name_var.value == "data":
+                    if obj.source and not val.source:
+                        print("SETTING DATA?", obj.source, val.source)
+                        # print("SETTING DATA?", val.value)
+                        obj.as_proxy().node.meta['example_value'].data = val.as_proxy().node.meta['example_value']
+                    else:
+                        if not obj.source:
+                            unimplemented(f"Setting data on non input a tensor is not supported. {obj.source}")
+                        if val.source:
+                            obj.as_proxy().node.meta['example_value'].data = val.as_proxy().node.meta['example_value']
+                            return 
+                            # unimplemented(f"Setting data with sourced val not supported. {obj.source} {val.source}")
+
             return val.add_options(self, obj, name_var)
         elif isinstance(obj, variables.UserDefinedObjectVariable):
             unimplemented(

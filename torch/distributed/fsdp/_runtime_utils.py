@@ -1378,6 +1378,8 @@ def _register_post_backward_reshard_only_hook(
     """
     # Construct `inp_tensors` lazily to avoid CPU overhead in typical case
     # where each flat parameter requires gradient
+    if not handle:
+        return
     inp_tensors: Optional[List[torch.Tensor]] = None
     if not handle:
         return
