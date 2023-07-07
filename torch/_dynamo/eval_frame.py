@@ -441,11 +441,11 @@ def catch_errors_wrapper(callback, hooks: Hooks):
             or skipfiles.check(frame.f_code.co_filename)
             or config.disable
         ):
-            print(
-                "AM I IN THE SKIPS?",
-                frame.f_code.co_name,
-                skipfiles.check(frame.f_code.co_filename),
-            )
+            # print(
+            #     "AM I IN THE SKIPS?",
+            #     frame.f_code.co_name,
+            #     skipfiles.check(frame.f_code.co_filename),
+            # )
             log.debug("skipping %s %s", frame.f_code.co_name, frame.f_code.co_filename)
             return None
         if frame.f_code.co_filename == "<string>" and frame.f_code.co_name == "__new__":

@@ -6408,6 +6408,7 @@ def ___make_guard_fn():
         # assert no recompile
         self.assertEqual(counter.frame_count, 6)
 
+# def test_set_data()
 
 class TestTracer(JitTestCase):
     def test_jit_save(self):

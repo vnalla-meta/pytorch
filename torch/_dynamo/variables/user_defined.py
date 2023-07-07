@@ -410,9 +410,7 @@ class UserDefinedObjectVariable(UserDefinedVariable):
             or type(self.value) == threading.local
         ):
             # getattr_static doesn't work on these
-            print("Checking module", self.value, name)
             subobj = getattr(self.value, name)
-            print("Got", subobj)
         else:
             subobj = inspect.getattr_static(self.value, name)
         return subobj

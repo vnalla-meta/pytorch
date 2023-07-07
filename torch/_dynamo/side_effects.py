@@ -441,6 +441,9 @@ class SideEffects:
         # do all the actual mutations at the very end to handle dependencies
         for suffix in reversed(suffixes):
             cg.extend_output(suffix)
+        print("RECONSTRUCTING!")
+        for i, inst in enumerate(cg._output):
+            print(f"{i}. {inst}")
 
     def is_empty(self):
         return not (

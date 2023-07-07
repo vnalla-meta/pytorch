@@ -1155,19 +1155,23 @@ class BuiltinVariable(VariableTracker):
         ):
             tx.output.side_effects.store_attr(obj, name_var.as_python_constant(), val)
             if isinstance(obj, variables.TensorVariable):
+                from .builder import wrap_fx_proxy, VariableBuilder, wrap_to_fake_tensor_and_record
                 if name_var.value == "data":
-                    if obj.source and not val.source:
-                        print("SETTING DATA?", obj.source, val.source)
-                        # print("SETTING DATA?", val.value)
-                        obj.as_proxy().node.meta['example_value'].data = val.as_proxy().node.meta['example_value']
-                    else:
-                        if not obj.source:
-                            unimplemented(f"Setting data on non input a tensor is not supported. {obj.source}")
-                        if val.source:
-                            obj.as_proxy().node.meta['example_value'].data = val.as_proxy().node.meta['example_value']
-                            return 
-                            # unimplemented(f"Setting data with sourced val not supported. {obj.source} {val.source}")
-
+                    to_remove = []
+                    for tf in tx.output.tracked_fakes:
+                        if tf.source == obj.source:
+                            to_remove.append(tf)
+                    for tf in to_remove:
+                        tx.output.tracked_fakes.remove(tf)
+                    
+                    out = wrap_fx_proxy(
+                        tx,
+                        tx.output.create_proxy(
+                            "call_function", torch._set_data, *proxy_args_kwargs([obj, val], {}))
+                        )
+                    tx.replace_all(obj, out)
+                    print("mutable?", obj.mutable_local)
+            
             return val.add_options(self, obj, name_var)
         elif isinstance(obj, variables.UserDefinedObjectVariable):
             unimplemented(
