@@ -186,7 +186,7 @@ capture_scalar_outputs = False
 # break instead of capturing.  This requires dynamic_shapes to be True.
 # If you set this to True, you probably also want capture_scalar_outputs
 # (these are separated for historical reasons).
-capture_dynamic_output_shape_ops = False
+capture_dynamic_output_shape_ops = True
 
 # Should almost always be true in prod. This relaxes the requirement that cond's true_fn and
 # false_fn produces code with identical guards.

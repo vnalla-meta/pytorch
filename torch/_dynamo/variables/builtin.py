@@ -1092,9 +1092,17 @@ class BuiltinVariable(VariableTracker):
                         return VariableBuilder(tx, source)(example_value).add_options(
                             options
                         )
-                unimplemented("tensor grad")
+                unimplemented("tensor grad with source", source)
             else:
-                unimplemented("tensor grad")
+                from .builder import wrap_fx_proxy
+                grad_proxy = obj.as_proxy().grad
+                return wrap_fx_proxy(
+                    tx=tx,
+                    proxy=grad_proxy,
+                    example_value=obj.as_proxy().node.meta['example_value'].grad,
+                    **options,
+                )
+                # unimplemented("tensor grad without source")
         elif isinstance(
             obj,
             (

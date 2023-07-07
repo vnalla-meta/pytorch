@@ -531,7 +531,9 @@ class TensorVariable(VariableTracker):
                 example_value=None,
                 **options,
             )
-        elif name in ("tolist", "backward", "data_ptr"):
+        elif name == "tolist":
+            unimplemented(f"TOLIST with {self.as_proxy().node.meta['example_value'].tolist()} {args} {kwargs}")
+        elif name in ("backward", "data_ptr"):
             unimplemented(f"Tensor.{name}")
         elif name == "item" and not config.capture_scalar_outputs:
             unimplemented(f"Tensor.{name}")
