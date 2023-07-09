@@ -421,6 +421,7 @@ class SideEffects:
                     var.mutable_local, {}
                 ).items():
                     for value in reversed(values):
+                        print("Value for record:", var, value)
                         if isinstance(var, variables.NewGlobalVariable):
                             cg.tx.output.update_co_names(name)
                             cg(value)
@@ -438,25 +439,19 @@ class SideEffects:
                                 suffixes.append(
                                     [create_instruction("DELETE_ATTR", argval=name)]
                                 )
+                                print(f"Made delattr {name}")
                         else:
                             cg.tx.output.update_co_names(name)
-                            # if isinstance(var, torch._dynamo.variables.nn_module.FSDPManagedNNModuleVariable) and hasattr(var.value, name):
-                            #     cg(var.mutable_local.source)
-                            #     suffixes.append(
-                            #         [create_instruction("DELETE_ATTR", argval=name)]
-                            #     )
                             cg(value)
                             cg(var.mutable_local.source)
                             suffixes.append([create_instruction("STORE_ATTR", argval=name)])
+                            print(f"Made storeattr {name}")
             else:
                 raise AssertionError(type(var))
 
         # do all the actual mutations at the very end to handle dependencies
         for suffix in reversed(suffixes):
             cg.extend_output(suffix)
-        print("RECONSTRUCTING!")
-        for i, inst in enumerate(cg._output):
-            print(f"{i}. {inst}")
 
     def is_empty(self):
         return not (

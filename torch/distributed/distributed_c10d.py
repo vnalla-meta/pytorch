@@ -534,7 +534,7 @@ class group(metaclass=_WorldMeta):
     pass
 
 class GroupMember(metaclass=_WorldMeta):
-    NON_GROUP_MEMBER = object()
+    NON_GROUP_MEMBER = -100
 
 
 # Default process group state

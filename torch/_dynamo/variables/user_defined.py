@@ -219,6 +219,11 @@ class UserDefinedObjectVariable(UserDefinedVariable):
     def python_type(self):
         return self.value_type
 
+    def reconstruct(self, codegen):
+        if isinstance(self.value, torch.distributed.fsdp.fully_sharded_data_parallel.FullyShardedDataParallel):
+            raise RuntimeError("Attempted reconstruct?", self.value)
+        return super().reconstruct(codegen)
+
     @staticmethod
     @functools.lru_cache(None)
     def _supported_random_functions():
