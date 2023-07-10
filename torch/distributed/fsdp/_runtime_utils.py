@@ -379,7 +379,11 @@ def _reshard(
     # Since we prefetch entire handles keys at a time, conservatively mark
     # the entire key as no longer prefetched once we free at least one
     if free_unsharded_flat_param:
+<<<<<<< HEAD
         handle._prefetched = False
+=======
+        handle.prefetched = False
+>>>>>>> WIP
 
 
 def _unshard_grads(
@@ -461,7 +465,7 @@ def _pre_forward_unshard(
         return
     # If the handles have been prefetched, then there is no need to call
     # `_unshard()` again
-    if not state._handles_prefetched.get(handle, False):
+    if not handle.prefetched:
         _unshard(state, handle, state._streams_unshard, state._streams_pre_unshard)
     handle._needs_pre_forward_unshard = False
     state._device_handle.current_stream().wait_stream(state._streams_unshard)
@@ -692,7 +696,11 @@ def _pre_backward_hook(
         if handle._needs_pre_backward_unshard:
             # If the handles have been prefetched, then there is no need to
             # call `_unshard()` again
+<<<<<<< HEAD
             if not handle._prefetched:
+=======
+            if not handle.prefetched:
+>>>>>>> WIP
                 _unshard(
                     state,
                     handle,
@@ -1124,7 +1132,11 @@ def _prefetch_handle(
     """
     if not current_handle:
         return
+<<<<<<< HEAD
     handle = _get_handle_to_prefetch(state, current_handle)
+=======
+    handle = _get_handle_to_prefetch(state, current_handles_key)
+>>>>>>> WIP
     if not handle:
         return
     # Temporarily emulate the training state while calling `_unshard` to
@@ -1138,9 +1150,15 @@ def _prefetch_handle(
         raise ValueError(f"Invalid prefetch mode on rank {state.rank}: {prefetch_mode}")
     # Prefetch the next set of handles without synchronizing to allow
     # the sync to happen as late as possible to maximize overlap
+<<<<<<< HEAD
     _unshard(state, handle, state._unshard_stream, state._pre_unshard_stream)
     handle._training_state = prev_training_state
     handle._prefetched = True
+=======
+    _unshard(state, handle, state._streams_unshard, state._streams_pre_unshard)
+    handle._training_state = prev_training_state
+    handle.prefetched = True
+>>>>>>> WIP
 
 
 @no_type_check
@@ -1179,7 +1197,7 @@ def _get_handle_to_prefetch(
         target_handles_key_candidate = eod.get_handle_to_backward_prefetch(
             current_handles_key
         )
-        if target_handles_key_candidate._needs_pre_backward_unshard and not state._handles_prefetched.get(target_handles_key_candidate, False):
+        if target_handles_key_candidate._needs_pre_backward_unshard and not target_handles_key_candidate.prefetched:
             target_handles_key = target_handles_key_candidate
         else:
             target_handles_key = None
@@ -1187,7 +1205,7 @@ def _get_handle_to_prefetch(
         target_handles_key_candidate = eod.get_handle_to_forward_prefetch(
             current_handles_key
         )
-        if target_handles_key_candidate._needs_pre_forward_unshard and not state._handles_prefetched.get(target_handles_key_candidate, False):
+        if target_handles_key_candidate._needs_pre_forward_unshard and not target_handles_key_candidate.prefetched:
             target_handles_key = target_handles_key_candidate
         else:
             target_handles_key = None
