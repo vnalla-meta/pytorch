@@ -436,9 +436,6 @@ def _init_runtime_state(
     state._communication_hook = _get_default_comm_hook(state.sharding_strategy)
     state._communication_hook_state = _get_default_comm_hook_state(state.process_group)
     state._hook_registered = False
-    # Used to prevent running the pre-backward hook multiple times
-    _ran_pre_backward_hook: Dict[FlatParamHandle, bool] = {}
-    state._ran_pre_backward_hook = _ran_pre_backward_hook
     return state
 
 
