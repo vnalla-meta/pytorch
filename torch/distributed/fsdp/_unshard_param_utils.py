@@ -180,8 +180,6 @@ def _unshard_fsdp_state_params(
     if not handle:
         yield
         return
-    if handle._training_state == HandleTrainingState.SUMMON_FULL_PARAMS:
-        handle = None
 
     assert (
         handle._training_state == HandleTrainingState.IDLE
