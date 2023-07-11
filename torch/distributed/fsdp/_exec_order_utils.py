@@ -78,7 +78,7 @@ class _ExecOrderData:
         for handle in traversal_utils._get_fsdp_handles(root_module):
             index = len(self.all_handles)
             self.all_handles.append(handle)
-            handle.index = index
+            handle._handle_index = index
             self.param_to_fqn = _get_param_to_fqns(root_module)
         # TODO (awgu): We can broadcast the metadata of rank 0's `all_handles`
         # to check that all ranks have the same handles in the same order.
@@ -309,10 +309,7 @@ class _ExecOrderData:
         """
         indices: List[Optional[int]] = []
         if handle:
-            if handle not in self.handle_to_handle_index:
-                indices.append(None)
-            else:
-                indices.append(self.handle_to_handle_index[handle])
+            indices.append(handle._handle_index)
         return tuple(indices)
 
     def _get_names_from_handle_indices(

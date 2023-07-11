@@ -27,6 +27,7 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+from torch.distributed._tensor import DTensor
 from torch.distributed.fsdp._common_utils import (
     _FSDPDeviceHandle,
     _named_parameters_with_duplicates,
@@ -1359,9 +1360,8 @@ class FlatParamHandle:
             # autograd. We use them in the pre-backward as well to support
             # reentrant activation checkpointing, which needs the views to be
             # tracked by autograd in the backward pass's recomputed forward.
-            as_params = not in_forward and not in_pre_backward
             self._use_unsharded_views(
-                as_params=as_params
+                as_params=(not in_forward and not in_pre_backward)
             )
         elif in_forward:
             self._use_unsharded_views(as_params=False)
@@ -1791,7 +1791,6 @@ class FlatParamHandle:
             zip(views, flat_param._param_infos)
         ):
             if self._use_orig_params and as_params:
-                from torch.distributed._tensor import DTensor
                 if type(view) is DTensor:
                     # A `DTensor` `view` is not compatible with assigning
                     # `param.data = view`, so we cannot preserve the parameter
@@ -2474,7 +2473,10 @@ class FlatParamHandle:
         msg_prefix = "Expects tensor to be unsharded "
         _p_assert(tensor is not None, msg_prefix + "but got `None`")
         unsharded_size = self.flat_param._unpadded_unsharded_size
-        _p_assert(tensor.size() == unsharded_size, "its fucked")
+        _p_assert(
+            tensor.size() == unsharded_size,
+            msg_prefix + f"with size {unsharded_size} but got {tensor.size()}",
+        )
 
     def _check_sharded(self, tensor: Tensor):
         msg_prefix = "Expects tensor to be sharded "
