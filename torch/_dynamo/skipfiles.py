@@ -153,7 +153,7 @@ if torch.distributed.is_available():
 
     FILENAME_ALLOWLIST |= {
         inspect.getfile(
-            torch.distributed._functional_collectives._all_gather_into_tensor
+            torch.distributed._functional_collectives_impl._all_gather_into_tensor
         )
     }
 

@@ -379,11 +379,7 @@ def _reshard(
     # Since we prefetch entire handles keys at a time, conservatively mark
     # the entire key as no longer prefetched once we free at least one
     if free_unsharded_flat_param:
-<<<<<<< HEAD
         handle._prefetched = False
-=======
-        handle.prefetched = False
->>>>>>> WIP
 
 
 def _unshard_grads(
@@ -607,12 +603,10 @@ def _root_pre_forward(
         if state.forward_prefetch:
             handles = []
             for fsdp_state in state._all_fsdp_states:
-                # TODO: Forward prefetch assumes singleton handles key. For the
-                # composable path, `_handles` may have more than one handle,
-                # whereas for the wrapper path, it has at most one handle.
-                handles_keys.extend((handle,) for handle in fsdp_state._handles)
-            for handles_key in handles_keys:
-                handles_key._needs_pre_forward_unshard = True
+                if fsdp_state._handle:
+                    handles.append(fsdp_state._handle)
+            for handle in handles:
+                state._needs_pre_forward_unshard[handle] = True
         _wait_for_computation_stream(
             state._device_handle.current_stream(),
             state._unshard_stream,
@@ -696,11 +690,7 @@ def _pre_backward_hook(
         if handle._needs_pre_backward_unshard:
             # If the handles have been prefetched, then there is no need to
             # call `_unshard()` again
-<<<<<<< HEAD
             if not handle._prefetched:
-=======
-            if not handle.prefetched:
->>>>>>> WIP
                 _unshard(
                     state,
                     handle,
@@ -1132,11 +1122,7 @@ def _prefetch_handle(
     """
     if not current_handle:
         return
-<<<<<<< HEAD
     handle = _get_handle_to_prefetch(state, current_handle)
-=======
-    handle = _get_handle_to_prefetch(state, current_handles_key)
->>>>>>> WIP
     if not handle:
         return
     # Temporarily emulate the training state while calling `_unshard` to
@@ -1150,15 +1136,9 @@ def _prefetch_handle(
         raise ValueError(f"Invalid prefetch mode on rank {state.rank}: {prefetch_mode}")
     # Prefetch the next set of handles without synchronizing to allow
     # the sync to happen as late as possible to maximize overlap
-<<<<<<< HEAD
     _unshard(state, handle, state._unshard_stream, state._pre_unshard_stream)
     handle._training_state = prev_training_state
     handle._prefetched = True
-=======
-    _unshard(state, handle, state._streams_unshard, state._streams_pre_unshard)
-    handle._training_state = prev_training_state
-    handle.prefetched = True
->>>>>>> WIP
 
 
 @no_type_check

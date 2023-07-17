@@ -290,12 +290,12 @@ def _is_allowed_distributed(obj):
         and "torch.distributed" in obj.__module__
     ):
         if obj in [
-            torch.distributed._functional_collectives._all_gather_into_tensor,
-            torch.distributed._functional_collectives._all_reduce,
-            torch.distributed._functional_collectives._reduce_scatter_tensor,
-            torch.distributed._functional_collectives._all_reduce_coalesced,
-            torch.distributed._functional_collectives._all_gather_into_tensor_coalesced,
-            torch.distributed._functional_collectives._reduce_scatter_tensor_coalesced,
+            torch.distributed._functional_collectives_impl._all_gather_into_tensor,
+            torch.distributed._functional_collectives_impl._all_reduce,
+            torch.distributed._functional_collectives_impl._reduce_scatter_tensor,
+            torch.distributed._functional_collectives_impl._all_reduce_coalesced,
+            torch.distributed._functional_collectives_impl._all_gather_into_tensor_coalesced,
+            torch.distributed._functional_collectives_impl._reduce_scatter_tensor_coalesced,
         ]:
             return True
         return False
