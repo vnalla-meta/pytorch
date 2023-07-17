@@ -768,7 +768,7 @@ class VariableBuilder:
             and not config.allow_rnn
         ):
             unimplemented("TorchDynamo purposely graph breaks on RNN, GRU, LSTMs")
-        if mutation_guard.is_dynamic_nn_module(value):
+        if mutation_guard.is_dynamic_nn_module(value) and not getattr(value, "_is_fsdp_managed_module", False):
             # created dynamically, don't specialize on it
             result = UnspecializedNNModuleVariable(
                 value, guards=self.make_guards(GuardBuilder.TYPE_MATCH)

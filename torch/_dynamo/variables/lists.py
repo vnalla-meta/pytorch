@@ -899,10 +899,18 @@ class SetVariable(VariableTracker):
             assert len(args) == 1
             assert not kwargs
 
+
             search = args[0]
+            def _search(item):
+                if isinstance(item, variables.NNModuleVariable):
+                    return self.tx.output.nn_modules[item.module_key] == search.as_python_constant()
+                return item.as_python_constant() == search.as_python_constant()
+
+                
+                x.as_python_constant() == search.as_python_constant()
             if check_constant_args(args, {}) and search.is_python_constant():
                 result = any(
-                    x.as_python_constant() == search.as_python_constant()
+                   _search(x)
                     for x in self.items
                 )
                 return variables.ConstantVariable(result, **options)

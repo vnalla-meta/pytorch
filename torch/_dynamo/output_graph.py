@@ -561,13 +561,31 @@ class OutputGraph(Checkpointable[OutputGraphState]):
         *names,
         **options,
     ):
-        if is_dynamic_nn_module(target):
+        if is_dynamic_nn_module(target) and not getattr(target, "_is_fsdp_managed_module", False):
             return variables.UnspecializedNNModuleVariable(target, **options)
 
         options = dict(options)
         options["guards"] = set(options.get("guards", []))
         assert "source" in options
         source = options["source"]
+
+        if is_dynamic_nn_module(target) and getattr(target, "_is_fsdp_managed_module", False):
+            # TODO(dedup)
+            name = "_".join(map(str, names))
+            base = name
+            for i in itertools.count():
+                if name not in self.nn_modules:
+                    self.nn_modules[name] = target
+                    break
+                name = f"{base}_{i}"
+            options["guards"].add(source.make_guard(GuardBuilder.TYPE_MATCH))
+            options["guards"].add(source.make_guard(GuardBuilder.ID_MATCH))
+            return variables.nn_module.FSDPManagedNNModuleVariable(
+                target,
+                name,
+                **options,
+            )
+
         assert not isinstance(source, ParamBufferSource)
 
         if isinstance(target, torch.Tensor):

@@ -654,6 +654,8 @@ class UnspecializedNNModuleVariable(UserDefinedObjectVariable):
     """
 
     def __init__(self, value, **kwargs):
+        if getattr(value, "_is_fsdp_managed_module", False) and type(self) == UnspecializedNNModuleVariable:
+            raise RuntimeError(f"How? {type(self)}")
         if type(value) is torch.jit._script.RecursiveScriptModule:
             raise Unsupported(
                 "ScriptModules aren't supported in UnspecializedNNModuleVariable"
