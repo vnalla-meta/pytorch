@@ -309,7 +309,10 @@ class _ExecOrderData:
         """
         indices: List[Optional[int]] = []
         if handle:
-            indices.append(handle.index)
+            if handle not in self.handle_to_handle_index:
+                indices.append(None)
+            else:
+                indices.append(self.handle_to_handle_index[handle])
         return tuple(indices)
 
     def _get_names_from_handle_indices(
