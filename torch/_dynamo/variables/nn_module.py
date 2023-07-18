@@ -816,6 +816,10 @@ class FSDPManagedNNModuleVariable(UnspecializedNNModuleVariable):
             self.source = NotNNModuleSource(source)
         self.module_key = module_key
 
+    def call_function(self, tx, args: List[VariableTracker], kwargs: Dict[str, VariableTracker]) -> VariableTracker:
+        print("FSDPManagedNNModuleVariable FUNC", args, kwargs)
+        return super().call_function(tx, args, kwargs)
+
     def call_method(self, tx, name, args: List[VariableTracker], kwargs: Dict[str, VariableTracker]) -> VariableTracker:
         print("FSDPManagedNNModuleVariableMETHOD", name)
         key = self.module_key

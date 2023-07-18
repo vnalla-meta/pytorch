@@ -580,10 +580,13 @@ class OutputGraph(Checkpointable[OutputGraphState]):
                 name = f"{base}_{i}"
             options["guards"].add(source.make_guard(GuardBuilder.TYPE_MATCH))
             options["guards"].add(source.make_guard(GuardBuilder.ID_MATCH))
-            return variables.nn_module.FSDPManagedNNModuleVariable(
+            vt = variables.nn_module.FSDPManagedNNModuleVariable(
                 target,
                 name,
                 **options,
+            )
+            return self.side_effects.track_object_existing(
+                source, target, vt
             )
 
         assert not isinstance(source, ParamBufferSource)

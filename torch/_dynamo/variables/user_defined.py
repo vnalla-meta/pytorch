@@ -659,3 +659,24 @@ class ProcessGroupVariable(UserDefinedObjectVariable):
 
             return istype(value, ProcessGroup)
         return False
+
+class AutogradNodeVariable(UserDefinedObjectVariable):
+    def var_getattr(self, tx, name):
+        attr = getattr(self.value, name, None)
+        print(f"Asking for {name} on node and it has? {attr}")
+        options = VariableTracker.propagate(self)
+        if attr and self.source:
+            from .builder import VariableBuilder
+            return VariableBuilder(tx, AttrSource(self.source, name))(getattr(self.value, name))
+        elif attr and name == "next_functions":
+            outer_tuple_items = []
+            for outer_item in attr:
+                inner_tuple_items = []
+                for inner_item in outer_item:
+                    inner_tuple_items.append(UserDefinedObjectVariable(inner_item, **options)) 
+                inner_tuple_obj = variables.lists.TupleVariable(inner_tuple_items, **options)
+                outer_tuple_items.append(inner_tuple_obj)
+            outer_tuple_obj = variables.lists.TupleVariable(outer_tuple_items, **options)
+            return outer_tuple_obj
+            # return UserDefinedObjectVariable(getattr(self.value, name), **options)
+        return super().var_getattr(tx, name)

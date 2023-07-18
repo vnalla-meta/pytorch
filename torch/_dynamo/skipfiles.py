@@ -82,7 +82,7 @@ SKIP_DIRS = [
         copyreg,
         dataclasses,
         enum,
-        functools,
+        # functools,
         importlib,
         inspect,
         linecache,

@@ -78,6 +78,9 @@ def _same_storage_as_data_ptr(x: torch.Tensor, data_ptr: int) -> bool:
 
 def _no_dispatch_record_stream(tensor: torch.Tensor, stream: torch.Stream) -> None:
     # FIXME record_stream doesn't work with non-cuda tensors
+    from torch.distributed._functional_collectives import is_torchdynamo_compiling
+    if is_torchdynamo_compiling():
+        return
     if tensor.device.type not in ["cuda", torch._C._get_privateuse1_backend_name()]:
         return
     with no_dispatch():

@@ -296,6 +296,9 @@ class TensorVariable(VariableTracker):
                 if type(static_attr) != types.GetSetDescriptorType:
                     return None
 
+                print("Falling back to generic", self.as_proxy(), name)
+                if name == "grad_fn":
+                    return variables.user_defined.AutogradNodeVariable(self.as_proxy().node.meta['example_value'].grad_fn, **options)
                 return wrap_fx_proxy(
                     tx=tx,
                     proxy=GetAttrVariable.create_getattr_proxy(self.as_proxy(), name),
