@@ -688,6 +688,9 @@ class AccumulateGradVariable(UserDefinedObjectVariable):
             return RemovableHandle(handle, **options)
         return super().call_method(tx, name, args, kwargs)
 
+    def as_proxy(self):
+        return self.proxy
+
     # def reconstruct(self, codegen):
     #     return []
         # try:
@@ -718,7 +721,7 @@ class AutogradNodeVariable(UserDefinedObjectVariable):
             for i, outer_item in enumerate(attr):
                 inner_tuple_items = []
                 for j, inner_item in enumerate(outer_item):
-                    inner_tuple_items.append(AccumulateGradVariable(inner_item, self.proxy[i][j], **options)) 
+                    inner_tuple_items.append(AccumulateGradVariable(inner_item, self.proxy.next_functions[i][j], **options)) 
                 inner_tuple_obj = variables.lists.TupleVariable(inner_tuple_items, **options)
                 outer_tuple_items.append(inner_tuple_obj)
             outer_tuple_obj = variables.lists.TupleVariable(outer_tuple_items, **options)
