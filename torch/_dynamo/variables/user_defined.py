@@ -200,6 +200,8 @@ class UserDefinedObjectVariable(UserDefinedVariable):
         super().__init__(**kwargs)
         self.value = value
         self.value_type = value_type or type(value)
+        if isinstance(value, collections.deque) or value == collections.deque:
+            raise RuntimeError("not allowed!")
         # if isinstance(self.value, (types.FunctionType, types.MethodType)):
             # raise RuntimeError(f"Trying to make a UDO func {self.value}")
         if getattr(self.value, '_is_fsdp_managed_module', False) and type(self) == UserDefinedObjectVariable:

@@ -292,7 +292,7 @@ def _share_state_and_init_handle_attrs(
         fsdp_state._pre_unshard_stream = root_state._pre_unshard_stream
         fsdp_state._default_stream = root_state._default_stream
         fsdp_state._exec_order_data = root_state._exec_order_data
-        fsdp_state._free_event_queue = root_state._free_event_queue
+        # fsdp_state._free_event_queue = root_state._free_event_queue
         fsdp_state._device_mesh = root_state._device_mesh
         handle = fsdp_state._handle
         if handle:
@@ -348,13 +348,13 @@ def _unshard(
         ran_pre_unshard = handle.pre_unshard()
     if ran_pre_unshard:
         unshard_stream.wait_stream(pre_unshard_stream)
-    if state.limit_all_gathers:
-        event = state._free_event_queue.dequeue_if_needed()
-        if event:
-            with torch.profiler.record_function(
-                "FullyShardedDataParallel.rate_limiter"
-            ):
-                event.synchronize()
+    # if state.limit_all_gathers:
+        # event = state._free_event_queue.dequeue_if_needed()
+        # if event:
+        #     with torch.profiler.record_function(
+        #         "FullyShardedDataParallel.rate_limiter"
+        #     ):
+        #         event.synchronize()
     with state._device_handle.stream(unshard_stream):
         handle.unshard()
         handle.post_unshard()
@@ -374,7 +374,7 @@ def _reshard(
     if state.limit_all_gathers and free_unsharded_flat_param:
         free_event = state._device_handle.Event()
         free_event.record()
-        state._free_event_queue.enqueue(free_event)
+        # state._free_event_queue.enqueue(free_event)
     handle.post_reshard()
     # Since we prefetch entire handles keys at a time, conservatively mark
     # the entire key as no longer prefetched once we free at least one

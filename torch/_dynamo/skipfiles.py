@@ -198,7 +198,7 @@ if torch.distributed.is_available():
 
     FILENAME_ALLOWLIST |= {inspect.getfile(torch.distributed.is_initialized)}
 
-    FILENAME_ALLOWLIST |= {inspect.getfile(torch.distributed.fsdp._limiter_utils._FreeEventQueue)}
+    # FILENAME_ALLOWLIST |= {inspect.getfile(torch.distributed.fsdp._limiter_utils._FreeEventQueue)}
 
 # FILENAME_ALLOWLIST |= {inspect.getfile(torch.nn.Module)}
 

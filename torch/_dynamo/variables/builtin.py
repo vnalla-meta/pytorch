@@ -933,7 +933,9 @@ class BuiltinVariable(VariableTracker):
                     torch.Size([item.value for item in arg.unpack_var_sequence(tx)])
                 )
             else:
-                unimplemented(f"Format with {type(arg)} - NYI")
+                # lol
+                real_args.append(arg)
+                # unimplemented(f"Format with {type(arg)} - NYI")
 
         print("FORMAT", args)
         return ConstantVariable(inp_string.format(*real_args))

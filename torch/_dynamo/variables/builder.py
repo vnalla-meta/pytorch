@@ -1370,7 +1370,7 @@ def wrap_fx_proxy_cls(
     else:
         unimplemented(
             "torch.* op returned non-Tensor "
-            + f"{typestr(example_value)} {proxy.node.op} {proxy.node.target}"
+            + f"{typestr(example_value)} {isinstance(example_value, types.FunctionType)} {type(example_value)} {proxy.node.op} {proxy.node.target}"
         )
 
 

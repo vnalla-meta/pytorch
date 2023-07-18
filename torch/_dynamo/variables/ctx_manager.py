@@ -384,7 +384,9 @@ class CUDAStreamVariable(VariableTracker):
         args: "List[VariableTracker]",
         kwargs: "Dict[str, VariableTracker]",
     ) -> "VariableTracker":
-        unimplemented("cuda stream")
+        if name == "wait_stream":
+            return variables.ConstantVariable(None)
+        unimplemented(f"Attempting to invoke {name} on cuda stream")
 
     def as_proxy(self):
         return self.proxy
