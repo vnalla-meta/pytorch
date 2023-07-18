@@ -298,7 +298,7 @@ class TensorVariable(VariableTracker):
 
                 print("Falling back to generic", self.as_proxy(), name)
                 if name == "grad_fn":
-                    return variables.user_defined.AutogradNodeVariable(self.as_proxy().node.meta['example_value'].grad_fn, **options)
+                    return variables.user_defined.AutogradNodeVariable(self.as_proxy().node.meta['example_value'].grad_fn, self.as_proxy().grad_fn, **options)
                 return wrap_fx_proxy(
                     tx=tx,
                     proxy=GetAttrVariable.create_getattr_proxy(self.as_proxy(), name),
@@ -658,6 +658,7 @@ class TensorVariable(VariableTracker):
                 and isinstance(args[0], (SizeVariable, ShapeVariable))
             ):
                 name = "new_empty"
+            print("Fallthrough?", name)
             return wrap_fx_proxy(
                 tx,
                 tx.output.create_proxy(

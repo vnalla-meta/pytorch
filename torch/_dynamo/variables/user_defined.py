@@ -8,6 +8,7 @@ import random
 import threading
 import types
 from typing import Dict, List
+from torch._dynamo.variables.base import VariableTracker
 
 import torch.nn
 
@@ -183,6 +184,14 @@ class UserDefinedClassVariable(UserDefinedVariable):
             options["mutable_local"] = MutableLocal()
             return variables.DataClassVariable.create(self.value, args, kwargs, options)
 
+        print("Is it partial?", isinstance(self.value, functools.partial), self.value == functools.partial, args, kwargs)
+        if self.value == functools.partial:
+            subargs = args[1:]
+            subargs_real_values = []
+            for subarg in subargs:
+                subargs_real_values.append(subarg.value)
+            new_fn = functools.partial(args[0].fn, *subargs_real_values)
+            return variables.functions.UserFunctionVariable(new_fn, **options)
         return super().call_function(tx, args, kwargs)
 
     def const_getattr(self, tx, name):
@@ -660,23 +669,61 @@ class ProcessGroupVariable(UserDefinedObjectVariable):
             return istype(value, ProcessGroup)
         return False
 
+
+class RemovableHandle(UserDefinedObjectVariable):
+    pass
+    # def reconstruct(self, codegen):
+        # return []
+
+class AccumulateGradVariable(UserDefinedObjectVariable):
+    def __init__(self, value, proxy, value_type=None, **kwargs):
+        self.proxy = proxy
+        super().__init__(value, value_type, **kwargs)
+
+    def call_method(self, tx, name, args: List[VariableTracker], kwargs: Dict[str, VariableTracker]) -> VariableTracker:
+        options = VariableTracker.propagate(self)
+        if name == "register_hook":
+            print("REGISTERING?", args)
+            handle = self.value.register_hook(args[0].fn)
+            return RemovableHandle(handle, **options)
+        return super().call_method(tx, name, args, kwargs)
+
+    # def reconstruct(self, codegen):
+    #     return []
+        # try:
+        #     return variables.ConstantVariable(self.value).reconstruct(codegen)
+        # except Exception as e:
+        #     print("FAILED! BAD!", str(e))
+        #     import traceback
+        #     traceback.print_exc(limit=5)
+        #     print("FAILED! BAD!", str(e))
+        #     raise
+    
+
+
 class AutogradNodeVariable(UserDefinedObjectVariable):
+    def __init__(self, value, proxy, value_type=None, **kwargs):
+        self.proxy = proxy
+        super().__init__(value, value_type, **kwargs)
+
     def var_getattr(self, tx, name):
         attr = getattr(self.value, name, None)
-        print(f"Asking for {name} on node and it has? {attr}")
+        print(f"Asking for {name} on node and it has? {attr} {self.source}")
         options = VariableTracker.propagate(self)
         if attr and self.source:
             from .builder import VariableBuilder
             return VariableBuilder(tx, AttrSource(self.source, name))(getattr(self.value, name))
         elif attr and name == "next_functions":
             outer_tuple_items = []
-            for outer_item in attr:
+            for i, outer_item in enumerate(attr):
                 inner_tuple_items = []
-                for inner_item in outer_item:
-                    inner_tuple_items.append(UserDefinedObjectVariable(inner_item, **options)) 
+                for j, inner_item in enumerate(outer_item):
+                    inner_tuple_items.append(AccumulateGradVariable(inner_item, self.proxy[i][j], **options)) 
                 inner_tuple_obj = variables.lists.TupleVariable(inner_tuple_items, **options)
                 outer_tuple_items.append(inner_tuple_obj)
             outer_tuple_obj = variables.lists.TupleVariable(outer_tuple_items, **options)
-            return outer_tuple_obj
+            result = outer_tuple_obj
+            print("MADE from next_func?", result, [item.items for item in result.items])
+            return result
             # return UserDefinedObjectVariable(getattr(self.value, name), **options)
         return super().var_getattr(tx, name)

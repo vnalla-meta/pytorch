@@ -663,7 +663,7 @@ def _pre_backward_hook(
     """
     # Only run the pre-backward hook once per group of handles involved in the
     # same module forward computation
-    if handle and state._ran_pre_backward_hook.get(handle, False):
+    if handle and handle._ran_pre_backward_hook:
         return
 
     with torch.profiler.record_function("FullyShardedDataParallel._pre_backward_hook"):
@@ -1303,7 +1303,7 @@ def _register_pre_backward_hooks(
         handle._needs_pre_backward_unshard = False
         # Since these handles' `FlatParameter`s participated in a forward, we
         # conservatively assume that they will be used in the backward
-        state._ran_pre_backward_hook[handle] = False
+        handle._ran_pre_backward_hook = False
 
     def _register_hook(t: torch.Tensor) -> torch.Tensor:
         if t.requires_grad:
