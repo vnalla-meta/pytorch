@@ -455,6 +455,7 @@ class TupleVariable(BaseListVariable):
         return tuple
 
     def reconstruct(self, codegen):
+        print("CODEGEN FOR?", self.items)
         codegen.foreach(self.items)
         return [create_instruction("BUILD_TUPLE", arg=len(self.items))]
 

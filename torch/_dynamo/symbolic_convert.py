@@ -1858,6 +1858,13 @@ class InstructionTranslatorBase(Checkpointable[InstructionTranslatorGraphState])
         if name not in self.output.global_scope:
             self.output.install_global(name, weakref.ref(value))
 
+    def store_hook_handle(self, name, value):
+        self.output.guards.add(
+            GlobalWeakRefSource(name).make_guard(GuardBuilder.WEAKREF_ALIVE)
+        )
+        if name not in self.output.global_scope:
+            self.output.install_global(name, weakref.ref(value))
+
     @property
     def fake_mode(self):
         return self._fake_mode

@@ -15,6 +15,7 @@ import torch.nn
 from .. import variables
 from ..allowed_functions import is_allowed
 from ..exc import unimplemented
+from ..bytecode_transformation import create_call_function
 from ..guards import GuardBuilder
 from ..source import AttrSource, ODictGetItemSource, RandomValueSource
 from ..utils import (
@@ -670,10 +671,17 @@ class ProcessGroupVariable(UserDefinedObjectVariable):
         return False
 
 
-class RemovableHandle(UserDefinedObjectVariable):
-    pass
-    # def reconstruct(self, codegen):
-        # return []
+class RemovableHandleVariableTracker(UserDefinedObjectVariable):
+    def __init__(self, value, name, value_type=None, **kwargs):
+        super().__init__(value, value_type, **kwargs)
+        self.name = name
+    
+    def reconstruct(self, codegen):
+        codegen.append_output(
+            codegen.create_load_global(self.name, True, add=True)
+        )
+        codegen.extend_output(create_call_function(0, False))
+        return []
 
 class AccumulateGradVariable(UserDefinedObjectVariable):
     def __init__(self, value, proxy, value_type=None, **kwargs):
@@ -685,7 +693,9 @@ class AccumulateGradVariable(UserDefinedObjectVariable):
         if name == "register_hook":
             print("REGISTERING?", args)
             handle = self.value.register_hook(args[0].fn)
-            return RemovableHandle(handle, **options)
+            print("Handle is?", handle, self.proxy)
+            tx.store_hook_handle("register_hook", handle)
+            return RemovableHandleVariableTracker(handle, name, **options)
         return super().call_method(tx, name, args, kwargs)
 
     def as_proxy(self):

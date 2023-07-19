@@ -631,6 +631,7 @@ def explain(f, *args, **kwargs):
             guard_export_fn=guard_export_print,
         )(f)
         # TODO(voz): We may have instances of `f` that mutate inputs, we should track sideffects and reject.
+        print("OPTF is?", opt_f.forward, opt_f.__dict__)
         opt_f(*args, **kwargs)
 
     graph_count = len(graphs)

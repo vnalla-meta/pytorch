@@ -14,9 +14,7 @@ def init():
         "use_orig_params": True,
         "auto_wrap_policy": ModuleWrapPolicy({nn.Linear}),
     }
-    model = nn.Sequential(
-        nn.Linear(3, 3, device="cuda"), nn.ReLU(), nn.Linear(3, 3, device="cuda")
-    )
+    model = nn.Linear(3, 3, device="cuda")
     model = FSDP(
         model,
         **fsdp_kwargs,
@@ -30,38 +28,40 @@ def printing_eager(gm, inputs):
     return gm.forward
 
 def run(model, optim):
+    torch.manual_seed(42)
     losses = []
-    torch.manual_seed(dist.get_rank() + 1)
     inp = torch.randn((2, 3), device="cuda")
-    # torch._dynamo.optimize(printing_eager)(model)(inp)
-    explain = torch._dynamo.explain(model, inp)
-    for g in explain.graphs:
-        g.graph.print_tabular()
-    for i, gb in enumerate(explain.break_reasons):
-        print(f"{i}. {gb}")
-    sorted_dict = dict(sorted(torch._dynamo.exc.unimpl_and_count.items(), key=lambda x: x[1], reverse=True))
-
-    i = 0
-    for k, v in sorted_dict.items():
-        print(f"{i}. {k} - {v}")
-        i += 1
-    # for _ in range(3):
-    #     optim.zero_grad(set_to_none=True)
-    #     inp = torch.randn((2, 3), device="cuda")
-    #     out = model(inp)
-    #     loss = out.sum()
-    #     losses.append(loss)
-    #     loss.backward()
-    #     optim.step()
+    for _ in range(3):
+        optim.zero_grad(set_to_none=True)
+        # inp = torch.randn((2, 3), device="cuda")
+        out = model(inp)
+        loss = out.sum()
+        losses.append(loss)
+        loss.backward()
+        optim.step()
     return losses
 
-def main():
+def main(compiled):
+    model, optim = init()
+    if compiled:
+        model = torch._dynamo.optimize("eager", nopython=True)(model)
+    return run(model, optim)
+
+if __name__ == "__main__":
+    import time
     dist.init_process_group(backend="nccl")
     gpu_id = int(os.environ["LOCAL_RANK"])
     device = f"cuda:{gpu_id}"
     torch.cuda.set_device(device)
-    model, optim = init()
-    run(model, optim)
-
-if __name__ == "__main__":
-    main()
+    eager = main(compiled=False)
+    print("EAGER:", eager)
+    time.sleep(2)
+    compiled = main(compiled=True)
+    print("COMPILED:", compiled)
+    # for i in range(0, len(eager)):
+        # distance = torch.norm(eager[i] - compiled[i], p=2)  # p=2 specifies the Euclidean norm
+        # output_file = f"output_{os.getpid()}.txt"
+        # with open(output_file, 'a') as f:
+            # f.write(f"DIST AT {i} : {str(distance.item())}")
+        # print("DIST AT", i, distance.item())
+    # breakpoint()
