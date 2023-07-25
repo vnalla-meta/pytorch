@@ -2059,8 +2059,8 @@ jobs:
       GPU_ARCH_TYPE: cuda
       BUILD_SHARED_LIBS: false
       BUILD_TEST: false
-      SKIP_ALL_TESTS: 1
       LIBTORCH_CONFIG: release
+      SKIP_ALL_TESTS: 1
       LIBTORCH_VARIANT: static-without-deps
       # This is a dummy value for libtorch to work correctly with our batch scripts
       # without this value pip does not get installed for some reason
