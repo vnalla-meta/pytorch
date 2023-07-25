@@ -2175,6 +2175,7 @@ jobs:
       DESIRED_CUDA: cpu
       GPU_ARCH_VERSION: 11.8
       GPU_ARCH_TYPE: cuda
+      BUILD_SHARED_LIBS: false
       SKIP_ALL_TESTS: 1
       LIBTORCH_CONFIG: release
       LIBTORCH_VARIANT: static-build-deps
