@@ -6,7 +6,7 @@ At a high level, the PyTorch 2.0 stack consists of a graph capture from
 Python code using dynamo and a backend compiler. In this example the
 backend compiler consists of backward graph tracing using AOTAutograd
 and graph lowering using TorchInductor. There are of course many more
-compilers available `here <https://github.com/pytorch/torchdynamo/blob/0b8aaf340dad4777a080ef24bf09623f1aa6f3dd/README.md#existing-backend>`__
+compilers available `here <https://pytorch.org/docs/main/compile/get-started.html#existing-backends>`__
 but for this document we will focus on inductor as a motivating example.
 
 Torchdynamo supports training, using AotAutograd to capture backwards:
