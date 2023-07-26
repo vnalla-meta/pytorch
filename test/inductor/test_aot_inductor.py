@@ -6,13 +6,24 @@ import copy
 import torch
 import torch._export
 import torch._inductor
-
 import torch.fx._pytree as fx_pytree
 from torch._dynamo.testing import same
+from torch._inductor import config
 
 from torch.testing._internal.common_utils import TEST_WITH_ROCM, TestCase
 from torch.testing._internal.inductor_utils import HAS_CUDA
 from torch.utils import _pytree as pytree
+
+try:
+    try:
+        from . import test_torchinductor
+    except ImportError:
+        import test_torchinductor
+except unittest.SkipTest:
+    if __name__ == "__main__":
+        sys.exit(0)
+    raise
+
 
 aten = torch.ops.aten
 
@@ -38,21 +49,52 @@ class AOTInductorModelRunner:
         so_path = torch._inductor.aot_compile(exported.graph_module, all_args)
 
         # Use a utility function for easier testing
-        source = """
-        #include <torch/csrc/inductor/aot_inductor_model.h>
+        if config.aot_inductor.abi_compatible:
+            source = """
+            #include <torch/csrc/inductor/aot_inductor_model.h>
+            #include <c10/cuda/CUDAStream.h>
 
-        torch::aot_inductor::AOTInductorModel model;
+            torch::aot_inductor::AOTInductorModel model;
 
-        void run(
-                const std::vector<at::Tensor>& input_tensors,
-                std::vector<at::Tensor>& output_tensors) {
-            model.run(input_tensors, output_tensors, at::cuda::getCurrentCUDAStream());
-        }
-        """
+            void run(
+                    std::vector<at::Tensor>& input_tensors,
+                    std::vector<at::Tensor>& output_tensors) {
+                aot_inductor_initialize();
+
+                std::vector<AotInductorTensor> inputs;
+                for (at::Tensor& input : input_tensors) {
+                    inputs.push_back(convert_input_output_to_aot_tensor(&input));
+                }
+                std::vector<AotInductorTensor> outputs;
+                for (at::Tensor& output : output_tensors) {
+                    outputs.push_back(convert_input_output_to_aot_tensor(&output));
+                }
+                model.run(inputs, outputs, at::cuda::getCurrentCUDAStream());
+                aot_inductor_destroy();
+            }
+            """
+        else:
+            source = """
+            #include <torch/csrc/inductor/aot_inductor_model.h>
+            #include <c10/cuda/CUDAStream.h>
+
+            torch::aot_inductor::AOTInductorModel model;
+
+            void run(
+                    std::vector<at::Tensor>& input_tensors,
+                    std::vector<at::Tensor>& output_tensors) {
+                model.run(input_tensors, output_tensors, at::cuda::getCurrentCUDAStream());
+            }
+            """
         optimized = torch.utils.cpp_extension.load_inline(
             name="aot_inductor",
             cpp_sources=[source],
             functions=["run"],
+            extra_cflags=[
+                "-D AOT_INDUCTOR_ABI_COMPATIBLE"
+                if config.aot_inductor.abi_compatible
+                else ""
+            ],
             extra_ldflags=[so_path],
             with_cuda=True,
         ).run
@@ -74,7 +116,7 @@ class AOTInductorModelRunner:
         return pytree.tree_unflatten(output_tensors, output_spec)
 
 
-class AotInductorTests(TestCase):
+class AotInductorTestsTemplate:
     def test_missing_output(self):
         class Repro(torch.nn.Module):
             def __init__(self):
@@ -88,11 +130,12 @@ class AotInductorTests(TestCase):
 
         model = Repro()
         example_inputs = [
-            torch.randn(10, 10, device="cuda"),
-            torch.randn(10, 10, device="cuda"),
+            torch.randn(10, 10, device=self.device),
+            torch.randn(10, 10, device=self.device),
         ]
         expected = model(*example_inputs)
-        actual = AOTInductorModelRunner.run(model, example_inputs, expected)
+        with config.patch("aot_inductor.abi_compatible", self.abi_compatible):
+            actual = AOTInductorModelRunner.run(model, example_inputs, expected)
         self.assertTrue(same(actual, expected))
 
     def test_output_misaligned(self):
@@ -111,16 +154,57 @@ class AotInductorTests(TestCase):
 
         model = Repro()
         example_inputs = [
-            torch.randn(10, 10, device="cuda"),
-            torch.randn(10, 10, device="cuda"),
+            torch.randn(10, 10, device=self.device),
+            torch.randn(10, 10, device=self.device),
         ]
         expected = model(*example_inputs)
-        actual = AOTInductorModelRunner.run(model, example_inputs, expected)
+        with config.patch("aot_inductor.abi_compatible", self.abi_compatible):
+            actual = AOTInductorModelRunner.run(model, example_inputs, expected)
+        self.assertTrue(same(actual, expected))
+
+    def test_addmm_activation(self):
+        class Repro(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, mat1, mat2):
+                a = aten._addmm_activation(x, mat1, mat2)
+                return a
+
+        model = Repro()
+        example_inputs = [
+            torch.randn(32, 32, device=self.device),
+            torch.randn(32, 10, device=self.device),
+            torch.randn(10, 32, device=self.device),
+        ]
+        expected = model(*example_inputs)
+        with config.patch("aot_inductor.abi_compatible", self.abi_compatible):
+            actual = AOTInductorModelRunner.run(model, example_inputs, expected)
         self.assertTrue(same(actual, expected))
 
 
-if __name__ == "__main__":
-    from torch._dynamo.test_case import run_tests
+class AotInductorAbiCompatibile(TestCase):
+    abi_compatible = True
+    device = "cuda"
 
+
+test_torchinductor.copy_tests(
+    AotInductorTestsTemplate, AotInductorAbiCompatibile, "abi_compatible"
+)
+
+
+class AotInductorNotAbiCompatibile(TestCase):
+    abi_compatible = False
+    device = "cuda"
+
+
+test_torchinductor.copy_tests(
+    AotInductorTestsTemplate, AotInductorNotAbiCompatibile, "not_abi_compatible"
+)
+
+
+if __name__ == "__main__":
     if HAS_CUDA and not TEST_WITH_ROCM:
+        from torch._dynamo.test_case import run_tests
+
         run_tests(needs="filelock")
