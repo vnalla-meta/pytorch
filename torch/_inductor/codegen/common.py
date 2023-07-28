@@ -4,7 +4,7 @@ import functools
 import itertools
 import logging
 import re
-import typing
+from typing import Any, Dict, List, Set, Optional, Union, NamedTuple, ClassVar, Callable
 from collections import namedtuple
 from itertools import chain
 
@@ -39,7 +39,7 @@ TensorArg = namedtuple("TensorArg", ["name", "buffer", "dtype"])
 SizeArg = namedtuple("SizeArg", ["name", "expr"])
 
 
-def index_prevent_reordering(index: typing.List[sympy.Expr], index_vars, sizes):
+def index_prevent_reordering(index: List[sympy.Expr], index_vars, sizes):
     from ..ir import FlexibleLayout
 
     # added contiguous index prevents reordering
@@ -66,7 +66,7 @@ def boolean_ops():
 class DataTypePropagation:
     def __init__(self, body) -> None:
         self.body = body
-        self.graphs = {"root": body.root_block.graph}
+        self.graphs: Dict[Union[Callable[..., Any], str], Any] = {"root": body.root_block.graph}
         for k, v in body.subblocks.items():
             self.graphs[k] = v.graph
 
@@ -139,7 +139,7 @@ class DataTypePropagation:
         if node.target == "reduction":
             return node.args[1]
 
-        if node.target.startswith("masked_subblock"):
+        if isinstance(node.target, str) and node.target.startswith("masked_subblock"):
             return self.deduce_node_dtype_by_subgraph(node)
 
         return self.deduce_node_dtype_by_inputs(node)
@@ -217,9 +217,9 @@ class ExprPrinter(Printer):
         # point pow, you should make upstream retranslate the Sympy expression
         # into Tensor expressions earlier and do that instead.
         if exp == 0.5:
-            return self._helper_sqrt(base)
+            return self._helper_sqrt(base)  # type: ignore[attr-defined]
         elif exp == -0.5:
-            return "1/" + self._helper_sqrt(base)
+            return "1/" + self._helper_sqrt(base)  # type: ignore[attr-defined]
         base = self._print(base)
         assert exp == int(exp), exp
         exp = int(exp)
@@ -243,7 +243,7 @@ class ExprPrinter(Printer):
         return " % ".join(map(self.paren, map(self._print, expr.args)))
 
     def _print_CleanDiv(self, expr):
-        return self._print_FloorDiv(expr)
+        return self._print_FloorDiv(expr)  # type: ignore[attr-defined]
 
 
 class PythonPrinter(ExprPrinter):
@@ -379,9 +379,9 @@ class BracesBuffer(IndentedBuffer):
         return ctx()
 
 
-class InplacedBuffer(typing.NamedTuple):
+class InplacedBuffer(NamedTuple):
     inner_name: str
-    other_names: typing.List[str]
+    other_names: List[str]
 
 
 class KernelArgs:
@@ -526,7 +526,7 @@ class KernelArgs:
     def python_argdefs(self):
         arg_defs = []
         call_args = []
-        precompile_args = []
+        precompile_args: List[Union[TensorArg, SizeArg]] = []
         for inplaced in unique(self.inplace_buffers.values()):
             if inplaced == "REMOVED":
                 continue
@@ -648,7 +648,7 @@ class CSE:
         self.invalidated_stores = set()
         self.varname_map = varname_map or {}
 
-    def invalidate(self, keep_vars: typing.Set[str]):
+    def invalidate(self, keep_vars: Set[str]):
         for name, tmp in list(self.store_cache.items()):
             if tmp not in keep_vars:
                 del self.store_cache[name]
@@ -669,7 +669,7 @@ class CSE:
     def generate(
         self,
         buffer: IndentedBuffer,
-        expr: typing.Union[str, CSEVariable, OpsValue],
+        expr: Union[str, CSEVariable, OpsValue],
         *,
         bounds: ValueRanges = ValueRanges.unknown(),
         write=True,
@@ -817,19 +817,20 @@ class Kernel(CodeGen):
             self.name = "CSEProxy"
 
             @staticmethod
-            def __getattr__(name):
+            def __getattr__(name: str) -> Callable[..., CSEVariable]:  # type: ignore[misc]
                 def inner(*args, **kwargs):
                     # TritonTemplateKernel has no current_node
                     buf_bounds = ValueRanges.unknown()
                     if hasattr(V.interpreter, "current_node"):
                         fx_node = V.interpreter.current_node
+                        assert isinstance(self.node_to_bounds, dict)
                         buf_bounds = self.node_to_bounds.get(
                             fx_node, ValueRanges.unknown()
                         )
 
                     csevar = self.cse.generate(
                         self.compute,
-                        getattr(parent_handler, name)(*args, **kwargs),
+                        getattr(parent_handler, name)(*args, **kwargs),  # type: ignore[has-type]
                         bounds=buf_bounds,
                     )
                     csevar.update_on_args(name, args, kwargs)
@@ -840,7 +841,7 @@ class Kernel(CodeGen):
             @staticmethod
             def indirect_indexing(index_var, size, check=True):
                 # Skip CSE since this doesn't return an expression
-                return self.indirect_indexing(index_var, size, check)
+                return self.indirect_indexing(index_var, size, check)  # type: ignore[attr-defined]
 
             @staticmethod
             def load(name: str, index: sympy.Expr):
@@ -908,6 +909,7 @@ class Kernel(CodeGen):
                 )
 
         super().__enter__()
+        assert self.overrides
         parent_handler = self.overrides(V.get_ops_handler())
         self.exit_stack.enter_context(V.set_ops_handler(CSEProxy()))
         self.exit_stack.enter_context(V.set_kernel_handler(self))
@@ -938,7 +940,7 @@ class Kernel(CodeGen):
 
 @dataclasses.dataclass
 class OptimizationContext:
-    key: typing.ClassVar[str] = "opt_ctx"
+    key: ClassVar[str] = "opt_ctx"
 
     # Load value as mask
     is_load_as_mask: bool = False
