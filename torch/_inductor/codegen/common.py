@@ -4,9 +4,9 @@ import functools
 import itertools
 import logging
 import re
-from typing import Any, Dict, List, Set, Optional, Union, NamedTuple, ClassVar, Callable
 from collections import namedtuple
 from itertools import chain
+from typing import Any, Callable, ClassVar, Dict, List, NamedTuple, Optional, Set, Union
 
 import sympy
 from sympy.printing.printer import Printer
@@ -66,7 +66,9 @@ def boolean_ops():
 class DataTypePropagation:
     def __init__(self, body) -> None:
         self.body = body
-        self.graphs: Dict[Union[Callable[..., Any], str], Any] = {"root": body.root_block.graph}
+        self.graphs: Dict[Union[Callable[..., Any], str], Any] = {
+            "root": body.root_block.graph
+        }
         for k, v in body.subblocks.items():
             self.graphs[k] = v.graph
 
