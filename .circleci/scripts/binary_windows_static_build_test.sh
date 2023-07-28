@@ -9,5 +9,5 @@ export VC_YEAR=2019
 pushd "$BUILDER_ROOT"
 
 ./windows/internal/static_lib_test.bat
-pushd "$BUILDER_ROOT"
+
 popd
